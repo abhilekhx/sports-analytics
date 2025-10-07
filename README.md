@@ -1,135 +1,191 @@
-# Turborepo starter
+sports-analytics — workspace map & wiring
+sports-analytics/
+├─ apps/
+│ ├─ web/ # Next.js app (also hosts API routes)
+│ │ └─ src/app/
+│ │ ├─ api/metrics/route.ts ← GET /api/metrics (mock data + Zod validation)
+│ │ ├─ layout.tsx
+│ │ ├─ page.tsx
+│ │ ├─ globals.css
+│ │ └─ fonts/...
+│ │ └─ package.json ← "web" app scripts/deps
+│ │ └─ next.config.js ← Next config (currently minimal)
+│ │
+│ └─ mobile/ # Expo (React Native) app
+│ ├─ index.ts ← **ENTRY** (should boot the router)
+│ ├─ app.json ← Expo config; router plugin; API_BASE in `extra`
+│ ├─ babel.config.js ← adds "expo-router/babel" plugin
+│ ├─ tsconfig.json
+│ ├─ App.tsx ← (leftover from template; not used with Router)
+│ └─ src/app/
+│ ├─ \_layout.tsx ← Expo Router layout (Stack header)
+│ └─ index.tsx ← Home screen (fetches /api/metrics)
+│
+├─ packages/
+│ ├─ types/
+│ │ ├─ package.json ← name: "@playerai/types"
+│ │ └─ src/index.ts ← shared TS types (e.g., PlayerMetric)
+│ │
+│ ├─ validation/
+│ │ ├─ package.json ← name: "@playerai/validation" + zod dep
+│ │ └─ src/index.ts ← Zod schemas + inferred types
+│ │
+│ ├─ ui/ ← shared React components (web now; RN later)
+│ │ ├─ package.json ← name: "@playerai/ui"
+│ │ └─ src/_ ← components (exports via "exports": "./src/_.tsx")
+│ │
+│ ├─ eslint-config/ ← internal lint presets
+│ └─ typescript-config/ ← internal tsconfig presets
+│
+├─ package.json ← monorepo root (workspaces, turbo scripts)
+├─ turbo.json ← turborepo pipeline (cache/run dev/build/lint)
+└─ pnpm-workspace.yaml ← (implicit via root package.json workspaces)
 
-This Turborepo starter is maintained by the Turborepo core team.
+what each important file is doing
+web (Next.js)
 
-## Using this example
+apps/web/src/app/api/metrics/route.ts
+A server route (App Router). Returns mock data and validates it:
 
-Run the following command:
+import { MetricsResponseZ, PlayerMetricZ } from "@playerai/validation";
+// build an array of PlayerMetric and validate:
+const players = PlayerMetricZ.array().parse([...]);
+return NextResponse.json(MetricsResponseZ.parse({ matchId: "m1", players }));
 
-```sh
-npx create-turbo@latest
-```
+Why this matters: your API responses are runtime-checked (Zod), and the same shapes are importable from web + mobile.
 
-## What's inside?
+apps/web/src/app/page.tsx
+The homepage; can fetch from /api/metrics and render a simple table (you already had this earlier).
 
-This Turborepo includes the following packages/apps:
+apps/web/package.json
+Declares dependencies on your internal packages:
 
-### Apps and Packages
+{
+"dependencies": {
+"@playerai/types": "workspace:_",
+"@playerai/validation": "workspace:_",
+"@playerai/ui": "workspace:\*",
+"next": "^15.5.0", "react": "^19.1.0", "react-dom": "^19.1.0"
+}
+}
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+apps/web/next.config.js
+Currently empty. If you start importing code from packages that need transpiling, add:
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+const nextConfig = { transpilePackages: ["@playerai/ui", "@playerai/types", "@playerai/validation"] };
+export default nextConfig;
 
-### Utilities
+mobile (Expo + Expo Router)
 
-This Turborepo has some additional tools already setup for you:
+apps/mobile/app.json
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+Enables Expo Router and points it to your src/app tree:
 
-### Build
+"plugins": [["expo-router", { "origin": "src/app" }]]
 
-To build all apps and packages, run the following command:
+Holds your API base URL in extra (use your LAN IP):
 
-```
-cd my-turborepo
+"extra": { "API_BASE": "http://10.0.0.172:3000" }
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
+apps/mobile/babel.config.js
+Adds the Router plugin:
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+plugins: ['expo-router/babel']
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+apps/mobile/index.ts ❗️ENTRY
+Right now your zip shows both router + manual boot:
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+import { registerRootComponent } from "expo";
+import Home from "./src/app/index";
+import "expo-router/entry";
+import App from "./App";
+registerRootComponent(Home);
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+👉 For Expo Router, make this only:
 
-### Develop
+import "expo-router/entry";
 
-To develop all apps and packages, run the following command:
+And either delete/rename App.tsx, or just leave it unused.
 
-```
-cd my-turborepo
+apps/mobile/src/app/\_layout.tsx
+Minimal router stack header:
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+import { Stack } from "expo-router";
+export default function RootLayout() {
+return <Stack screenOptions={{ headerTitle: "PlayerAI" }} />;
+}
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
+apps/mobile/src/app/index.tsx
+Fetches your metrics and renders a list. It reads API_BASE from app.json:
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+const API_BASE = (Constants.expoConfig?.extra as any)?.API_BASE as string;
+fetch(`${API_BASE}/api/metrics`).then(r => r.json()).then(setData);
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+shared packages
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+packages/types/src/index.ts
+Pure TypeScript types you can import anywhere.
 
-### Remote Caching
+packages/validation/src/index.ts
+Zod schemas:
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+export const PlayerMetricZ = z.object({ ... });
+export const MetricsResponseZ = z.object({ matchId: z.string(), players: z.array(PlayerMetricZ) });
+export type MetricsResponse = z.infer<typeof MetricsResponseZ>;
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+packages/ui
+Web UI components (React). Importable by web; later you can add a ui-native for RN or keep them separate.
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+how everything is wired together
 
-```
-cd my-turborepo
+Workspaces: Root package.json declares "workspaces": ["apps/*", "packages/*", "services/*"].
+Running pnpm install links all local packages so imports like @playerai/validation resolve to your source folders.
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
+Turborepo: Root scripts.dev = "turbo run dev".
+Running pnpm dev launches every workspace that has a "dev" script (e.g., web, docs).
+You can start mobile separately with pnpm --filter mobile start.
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
+Data flow (today):
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+Mobile (Expo) ──fetch──> Web API (Next.js /api/metrics) ──Zod validate──> JSON
+^
+│
+Shared types/schemas in packages
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+Networking: mobile calls API_BASE you set in app.json. Use your Wi-Fi IPv4 (often 10.x or 192.168.x). Ignore WSL/VPN addresses (172.x) — your phone can’t reach them.
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
+current issues / quick fixes
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
+Expo entry conflict
+Your apps/mobile/index.ts currently mixes router + manual root.
+👉 Change it to:
 
-## Useful Links
+import "expo-router/entry";
 
-Learn more about the power of Turborepo:
+Then pnpm --filter mobile start -- --clear.
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+Leftover App.tsx
+Not harmful, but confusing. Consider renaming it to \_App_unused.tsx.
+
+Ports
+Web runs on 3000 (next dev --port 3000). If you also run docs, give it 3001 to avoid clashes.
+
+daily commands
+
+Install & link workspaces
+
+pnpm install
+pnpm list -r # verify @playerai/types, @playerai/validation, etc.
+
+Run everything (web + docs)
+
+pnpm dev
+
+Run just web
+
+pnpm --filter web dev
+
+Run mobile
+
+pnpm --filter mobile start # LAN mode
+pnpm --filter mobile start -- --tunnel # if LAN/VPN is painful
