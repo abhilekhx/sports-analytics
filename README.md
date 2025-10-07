@@ -19,7 +19,6 @@ A **modern, modular monorepo** for building a complete sports analytics platform
 ## 🗂️ Repository Structure
 
 ---
-```
 sports-analytics/ <br>
 ├── apps/ <br>
 │ ├── web/ # Next.js web app (frontend) <br>
@@ -36,7 +35,7 @@ sports-analytics/ <br>
 ├── turbo.json # Turborepo pipeline config <br>
 ├── pnpm-workspace.yaml # Workspace definitions <br>
 └── package.json # Root scripts and dependencies <br>
-```
+
  <br>
  
 ---
