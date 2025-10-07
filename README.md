@@ -1,5 +1,6 @@
-sports-analytics — workspace map & wiring
-sports-analytics/
+# sports-analytics — workspace map & wiring
+
+sports-analytics/<br>
 ├─ apps/
 │ ├─ web/ # Next.js app (also hosts API routes)
 │ │ └─ src/app/
