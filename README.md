@@ -105,11 +105,11 @@ export async function GET() {
 Command	Description
 
 ``` bash
-pnpm dev	Run all apps concurrently
-pnpm build	Build all apps/packages
-pnpm lint	Run lint checks across workspace
-pnpm format	Format code with Prettier
-pnpm check-types	Validate TypeScript types
+pnpm dev	//Run all apps concurrently
+pnpm build	//Build all apps/packages
+pnpm lint	//Run lint checks across workspace
+pnpm format	//Format code with Prettier
+pnpm check-types	//Validate TypeScript types
 ```
 ## 🌐 Local Network Setup (Expo + API)
 
